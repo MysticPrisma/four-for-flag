@@ -11,6 +11,10 @@ const YELLOW = 2;
 const BLACK = 0;
 const P1 = 0;
 const P2 = 1;
+const LEFT = 0;
+const RIGHT = 1;
+const UP = 2;
+const DOWN = 3;
 
 class Game {
   constructor(container, canvas, ctx) {
@@ -83,76 +87,41 @@ class Match extends State {
 
   onKeyDown = (e) => {
     if (e.repeat) return;
-    var code = e.keyCode;
+    const code = e.keyCode;
+    const input1 = this.players[P1].input;
+    const input2 = this.players[P2].input;
     //console.log(code);
     switch(code) {
-      case 65:
-        if (this.players[P1].input.at(-1)!="left") this.players[P1].input.push("left");
-        break;
-      case 68:
-        if(this.players[P1].input.at(-1)!="right") this.players[P1].input.push("right");
-        break;
-      case 87:
-        if(this.players[P1].input.at(-1)!="up") this.players[P1].input.push("up");
-        break;
-      case 83:
-        if(this.players[P1].input.at(-1)!="down") this.players[P1].input.push("down"); 
-        break;
+      case 65: if (input1.at(-1) != "left") input1.push("left"); break;
+      case 68: if (input1.at(-1) != "right") input1.push("right"); break;
+      case 87: if (input1.at(-1) != "up") input1.push("up"); break;
+      case 83: if (input1.at(-1) != "down") input1.push("down"); break;
 
-      case 37:
-        if(this.players[P2].input.at(-1)!="left") this.players[P2].input.push("left");
-        break;
-      case 39:
-        if(this.players[P2].input.at(-1)!="right") this.players[P2].input.push("right");
-        break;
-      case 38:
-        if(this.players[P2].input.at(-1)!="up") this.players[P2].input.push("up");
-        break;
-      case 40:
-        if(this.players[P2].input.at(-1)!="down") this.players[P2].input.push("down"); 
-        break;
+      case 37: if (input2.at(-1) != "left") input2.push("left"); break;
+      case 39: if (input2.at(-1) != "right") input2.push("right"); break;
+      case 38: if (input2.at(-1) != "up") input2.push("up"); break;
+      case 40: if (input2.at(-1) != "down") input2.push("down"); break;
     }
-    //console.log(this.players[P1].input);
+    //console.log(input1);
     e.preventDefault()
   }
 
   onKeyUp = (e) => {
-    var code = e.keyCode;
+    const code = e.keyCode;
+    const input1 = this.players[P1].input;
+    const input2 = this.players[P2].input
     switch(code){
-      case 65:
-        if(this.players[P1].input.indexOf("left")!=-1)
-          this.players[P1].input.splice(this.players[P1].input.indexOf("left"),1);
-        break;
-      case 68:
-        if(this.players[P1].input.indexOf("right")!=-1)
-          this.players[P1].input.splice(this.players[P1].input.indexOf("right"),1);
-        break;
-      case 87:
-        if(this.players[P1].input.indexOf("up")!=-1)
-          this.players[P1].input.splice(this.players[P1].input.indexOf("up"),1);
-        break;
-      case 83:
-        if(this.players[P1].input.indexOf("down")!=-1)
-          this.players[P1].input.splice(this.players[P1].input.indexOf("down"),1);
-        break;
-      case 37:
-        if(this.players[P2].input.indexOf("left")!=-1)
-          this.players[P2].input.splice(this.players[P2].input.indexOf("left"),1);
-        break;
-      case 39:
-        if(this.players[P2].input.indexOf("right")!=-1)
-          this.players[P2].input.splice(this.players[P2].input.indexOf("right"),1);
-        break;
-      case 38:
-        if(this.players[P2].input.indexOf("up")!=-1)
-          this.players[P2].input.splice(this.players[P2].input.indexOf("up"),1);
-        break;
-      case 40:
-        if(this.players[P2].input.indexOf("down")!=-1)
-          this.players[P2].input.splice(this.players[P2].input.indexOf("down"),1);
-        break;
+      case 65: if (input1.indexOf("left") != -1) input1.splice(input1.indexOf("left"), 1); break;
+      case 68: if (input1.indexOf("right") != -1) input1.splice(input1.indexOf("right"), 1); break;
+      case 87: if (input1.indexOf("up") != -1) input1.splice(input1.indexOf("up"), 1); break;
+      case 83: if (input1.indexOf("down") != -1) input1.splice(input1.indexOf("down"), 1); break;
+
+      case 37: if (input2.indexOf("left") != -1) input2.splice(input2.indexOf("left"), 1); break;
+      case 39: if (input2.indexOf("right") != -1) input2.splice(input2.indexOf("right"), 1); break;
+      case 38: if (input2.indexOf("up") != -1) input2.splice(input2.indexOf("up"), 1); break;
+      case 40: if (input2.indexOf("down") != -1) input2.splice(input2.indexOf("down"), 1); break;
     }
-    //console.log(this.players[P1].input);
+    //console.log(input1);
     e.preventDefault();
   }
 
@@ -201,6 +170,7 @@ class Player {
     this.prev = this.input.at(-1);
     this.collisions = [false, false, false, false];
     this.left = 0;
+    this.spd = 4;
   }
 
   draw(ctx) {
@@ -208,33 +178,12 @@ class Player {
   }
 
   checkCollision(walls) {
-      console.log(this.x);
-      console.log(this.x/TILE_SIZE);
-      console.log(this.y/TILE_SIZE);
-    if(!this.x){
-      this.collisions[0]=true;
-    }else if(walls[(this.x/TILE_SIZE)-1][(this.y/TILE_SIZE)]!=""){
-      this.collisions[0]=true;
-    }else{
-      this.collisions[0]=false;
-    }
-    if(this.x==(640-16)){
-      this.collisions[1]=true;
-    }else if(walls[(this.x/TILE_SIZE)+1][(this.y/TILE_SIZE)]!=""){
-      this.collisions[1]=true;
-    }else{
-      this.collisions[1]=false;
-    }
-    if(walls[(this.x/TILE_SIZE)][(this.y/TILE_SIZE)-1]!=""){
-      this.collisions[2]=true;
-    }else{
-      this.collisions[2]=false;
-    }
-    if(walls[(this.x/TILE_SIZE)][(this.y/TILE_SIZE)+1]!=""){
-      this.collisions[3]=true;
-    }else{
-      this.collisions[3]=false;
-    }
+    const tx = this.x / TILE_SIZE;
+    const ty = this.y / TILE_SIZE;
+    this.collisions[LEFT] = (walls[tx-1][ty] != "" || !this.x);
+    this.collisions[RIGHT] = (walls[tx+1][ty] != "" || this.x == 624);
+    this.collisions[UP] = (walls[tx][ty-1] != "");
+    this.collisions[DOWN] = (walls[tx][ty+1] != "");
   }
 
   update(walls, objects) {
@@ -253,34 +202,34 @@ class Player {
       switch (this.state) {
         case "left": 
           if (!this.collisions[0]) {
-            this.x--;
+            this.x -= this.spd;
           } else {
-            this.left=1;
+            this.left = this.spd;
           }
           break;
         case "right": 
           if (!this.collisions[1]) {
-            this.x++;
+            this.x += this.spd;
           } else {
-            this.left=1;
+            this.left = this.spd;
           }
           break;
         case "up": 
           if (!this.collisions[2]) {
-            this.y--;
+            this.y -= this.spd;
           } else {
-            this.left=1;
+            this.left = this.spd;
           }
           break;
         case "down": 
           if (!this.collisions[3]) {
-            this.y++;
+            this.y += this.spd;
           } else {
-            this.left=1;
+            this.left = this.spd;
           }
           break;
       }
-      this.left--;
+      this.left -= this.spd;
       this.prev = this.state;
     }
   }
@@ -317,7 +266,7 @@ class Path {
     this.y = y;
     this.w = w;
     this.h = h;
-    this.a = 1.00;
+    this.a = 0.90;
     this.done = false;
     this.color = color;
   }
@@ -329,10 +278,10 @@ class Path {
   }
 
   update() {
-    if (this.a <= 0.01) {
+    if (this.a <= 0.10) {
       this.done = true;
     } else {
-      this.a -= 0.02;
+      this.a -= 0.03;
     }
   }
 }
@@ -354,6 +303,7 @@ class Flag {
     for (const p of players) {
       if (p.x == this.x && p.y == this.y) {
         p.cube.color = "yellow";
+        p.spd = 2;
         this.done = true;
         break;
       }
