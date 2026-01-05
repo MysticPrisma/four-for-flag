@@ -19,3 +19,17 @@ canvas {
   justify-content: center;
   align-items: center;
 }
+
+#pre {
+  display: block;
+  width: 100%;
+  height: 320px;
+  border: none;
+  background-color: black;
+  color: white;
+  font-weight: bold;
+}
+
+#game {
+  display: none;
+}

@@ -7,7 +7,7 @@ const FPS = 1000 / 60;
 const GRID = false;
 const BLUE = 0;
 const PINK = 1;
-const YELLOW = 2;
+const WHITE = 2;
 const BLACK = 0;
 const P1 = 0;
 const P2 = 1;
@@ -28,24 +28,31 @@ class Game {
     this.lastTime = 0;
     this.state = null;
     this.animId = null;
+    this.audio = new AudioManager();
   }
 
-  init = () => {
-    window.addEventListener("resize", this.game.resize);
+  init = async() => {
+    window.addEventListener("resize", this.resize);
+    await this.audio.init();
+    await this.audio.load("match", "msc/battles/1.ogg");
+    await this.audio.playMusic("match");
   }
 
   resize = () => {
     const rect = this.cnt.getBoundingClientRect();
-    const width = rect.width/GAME_WIDTH;
-    const height = rect.height/GAME_HEIGHT;
+    const width = rect.width / GAME_WIDTH;
+    const height = rect.height / GAME_HEIGHT;
 
-    const scale = Math.floor(Math.min(width, height));
+    const scale = Math.max(Math.floor(Math.min(width, height)), 0.5);
 
-    this.canvas.width = GAME_WIDTH * scale;
-    this.canvas.height = GAME_HEIGHT * scale;
+    const w = GAME_WIDTH * scale;
+    const h = GAME_HEIGHT * scale;
 
-    this.canvas.style.width = this.canvas.width + "px";
-    this.canvas.style.height = this.canvas.height + "px";
+    this.canvas.width = GAME_WIDTH;
+    this.canvas.height = GAME_HEIGHT;
+
+    this.canvas.style.width = w + "px";
+    this.canvas.style.height = h + "px";
 
     this.ctx.imageSmoothingEnabled = false;
   }
@@ -80,9 +87,14 @@ class Match extends State {
     this.init();
   }
   
-  init = () => {
+  init() {
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
+  }
+
+  destroy() {
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
   }
 
   onKeyDown = (e) => {
@@ -235,6 +247,57 @@ class Player {
   }
 }
 
+class AudioManager {
+  constructor() {
+    this.ctx = null;
+    this.musicGain = null;
+    this.musicSource = null;
+    this.buffers = {};
+    this.enabled = true;
+  }
+
+  async init() {
+    this.ctx = new AudioContext();
+    this.musicGain = this.ctx.createGain();
+    this.musicGain.gain.value = 0.5;
+    this.musicGain.connect(this.ctx.destination);
+  }
+
+  async load(name, src) {
+    const res = await fetch(src);
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = await this.ctx.decodeAudioData(arrayBuffer);
+    this.buffers[name] = buffer;
+  }
+
+  playMusic(name, loop = true) {
+    if (!this.enabled || !this.buffers[name]) return;
+
+    if (this.musicSource) {
+      this.musicSource.stop();
+    }
+
+    const source = this.ctx.createBufferSource();
+    source.buffer = this.buffers[name];
+    source.loop = loop;
+    source.connect(this.musicGain);
+    source.start(0);
+
+    this.musicSource = source;
+  }
+
+  stopMusic() {
+    if (this.musicSource) {
+      this.musicSource.stop();
+      this.musicSource = null;
+    }
+  }
+
+  setMusicVolume(v) {
+    this.musicGain.gain.value = v;
+  }
+}
+
 class Wall {
   constructor(spr, x, y, inum) {
     this.spr = spr;
@@ -302,7 +365,7 @@ class Flag {
   update(players) {
     for (const p of players) {
       if (p.x == this.x && p.y == this.y) {
-        p.cube.color = "yellow";
+        p.cube.color = "white";
         p.spd = 2;
         this.done = true;
         break;
@@ -388,8 +451,14 @@ function drawGrid(ctx) {
 async function main() {
   const container = document.getElementById("game-container");
   const canvas = document.getElementById("game");
+  const pre = document.getElementById("pre");
+
+  canvas.style.display = "block";
+  pre.style.display = "none";
+
   const ctx = canvas.getContext("2d");
   const game = new Game(container, canvas, ctx);
+  await game.init();
 
   const colors = {
     cubes: ["cyan", "pink", "yellow"],
