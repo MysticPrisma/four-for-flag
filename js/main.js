@@ -7,6 +7,7 @@ const FPS = 1000 / 60;
 const GRID = false;
 const BLUE = 0;
 const PINK = 1;
+const GREEN = 2;
 const WHITE = 2;
 const BLACK = 0;
 const P1 = 0;
@@ -461,7 +462,7 @@ async function main() {
   await game.init();
 
   const colors = {
-    cubes: ["cyan", "pink", "yellow"],
+    cubes: ["cyan", "pink", "lime"],
     lvls: ["black"]
   }
 
@@ -479,18 +480,21 @@ async function main() {
   const [
     imgCubeBlue,
     imgCubePink,
+    imgCubeGreen,
     imgLvl1,
     imgFlag
   ] = await Promise.all([
     loadImage("cubes/blue.png"),
     loadImage("cubes/pink.png"),
+    loadImage("cubes/green.png"),
     loadImage("lvls/1.png"),
     loadImage("objs/flag.png")
   ]);
 
   images.cubes.push(
     imgCubeBlue,
-    imgCubePink
+    imgCubePink,
+    imgCubeGreen
   );
 
   images.lvls.push(
@@ -503,7 +507,8 @@ async function main() {
 
   cubes.push(
     new Cube(images.cubes[BLUE], colors.cubes[BLUE]),
-    new Cube(images.cubes[PINK], colors.cubes[PINK])
+    new Cube(images.cubes[PINK], colors.cubes[PINK]),
+    new Cube(images.cubes[GREEN], colors.cubes[GREEN])
   );
   
   //document.removeEventListener("keydown", preventKeyboardScroll, false);
@@ -524,7 +529,7 @@ async function main() {
 
   players.push(
     new Player(cubes[BLUE], levels[0].posP1.x, levels[0].posP1.y),
-    new Player(cubes[PINK], levels[0].posP2.x, levels[0].posP2.y)
+    new Player(cubes[GREEN], levels[0].posP2.x, levels[0].posP2.y)
   );
   
   game.resize();
