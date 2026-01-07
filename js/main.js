@@ -36,6 +36,8 @@ class Game {
     window.addEventListener("resize", this.resize);
     await this.audio.init();
     await this.audio.load("match", "msc/battles/1.ogg");
+    await this.audio.load("blue-get", "snd/blue/get.ogg");
+    await this.audio.load("green-get", "snd/green/get.ogg");
     await this.audio.playMusic("match");
   }
 
@@ -149,7 +151,7 @@ class Match extends State {
       const o = this.objects[i];
 
       if (o instanceof Flag) {
-        o.update(this.players);
+        o.update(this.players, this.game.audio);
       } else {
         o.update();
       }
@@ -173,10 +175,11 @@ class Match extends State {
 }
 
 class Player {
-  constructor(cube, x, y) {
+  constructor(cube, x, y, id) {
     this.cube = cube;
     this.x = x;
     this.y = y;
+    this.id = id;
     this.input = new Array();
     this.input.push("idle");
     this.state = this.input.at(-1);
@@ -252,16 +255,21 @@ class AudioManager {
   constructor() {
     this.ctx = null;
     this.musicGain = null;
+    this.sfxGain = null
     this.musicSource = null;
     this.buffers = {};
     this.enabled = true;
+    this.playerVoices = new Map();
   }
 
   async init() {
     this.ctx = new AudioContext();
     this.musicGain = this.ctx.createGain();
-    this.musicGain.gain.value = 0.5;
+    this.musicGain.gain.value = 0.3;
     this.musicGain.connect(this.ctx.destination);
+    this.sfxGain = this.ctx.createGain();
+    this.sfxGain.gain.value = 0.6;
+    this.sfxGain.connect(this.ctx.destination);
   }
 
   async load(name, src) {
@@ -285,6 +293,45 @@ class AudioManager {
     source.start(0);
 
     this.musicSource = source;
+  }
+
+  playVoice(player, sound, x) {
+    if (!this.enabled || !this.buffers[sound]) return;
+    
+    const prev = this.playerVoices.get(player);
+    if (prev) prev.stop();
+
+    const source = this.ctx.createBufferSource();
+    const selfgain = this.ctx.createGain();
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = ((x / GAME_WIDTH) * 2) - 1;
+    source.buffer = this.buffers[sound];
+    source.connect(panner);
+    panner.connect(selfgain);
+    selfgain.connect(this.sfxGain);
+
+    source.start();
+    this.playerVoices.set(player, source);
+
+    source.onended = () => {
+      if (this.playerVoices.get(player) === source) {
+        this.playerVoices.delete(player);
+      }
+    };
+  }
+  
+  playSfx(sound, x) {
+    const source = this.ctx.createBufferSource();
+    const selfgain = this.ctx.createGain();
+    const panner = this.ctx.createStereoPanner();
+
+    source.buffer = this.buffers[sound];
+    //selfgain.gain.value = this.sfxGain.gain.value;
+    panner.pan.value = ((x / GAME_WIDTH) * 2) - 1;
+    source.connect(panner);
+    pan.connect(selfgain);
+    gain.connect(this.sfxGain);
+    src.start();
   }
 
   stopMusic() {
@@ -363,9 +410,10 @@ class Flag {
     ctx.drawImage(this.spr, this.x, this.y);
   }
 
-  update(players) {
+  update(players, audio) {
     for (const p of players) {
       if (p.x == this.x && p.y == this.y) {
+        audio.playVoice(p.id, p.cube.sounds.get, p.x);
         p.cube.color = "white";
         p.spd = 2;
         this.done = true;
@@ -376,9 +424,10 @@ class Flag {
 }
 
 class Cube {
-  constructor(img, color) {
+  constructor(img, color, sounds) {
     this.img = img;
     this.color = color;
+    this.sounds = sounds;
   }
 }
 
@@ -506,9 +555,21 @@ async function main() {
   );
 
   cubes.push(
-    new Cube(images.cubes[BLUE], colors.cubes[BLUE]),
-    new Cube(images.cubes[PINK], colors.cubes[PINK]),
-    new Cube(images.cubes[GREEN], colors.cubes[GREEN])
+    new Cube(
+      images.cubes[BLUE], 
+      colors.cubes[BLUE],
+      {get: "blue-get"}
+    ),
+    new Cube(
+      images.cubes[PINK], 
+      colors.cubes[PINK],
+      {get: "green-get"}
+    ),
+    new Cube(
+      images.cubes[GREEN], 
+      colors.cubes[GREEN],
+      {get: "green-get"}
+    )
   );
   
   //document.removeEventListener("keydown", preventKeyboardScroll, false);
@@ -528,8 +589,8 @@ async function main() {
   levels[0].load(lvls[0]);
 
   players.push(
-    new Player(cubes[BLUE], levels[0].posP1.x, levels[0].posP1.y),
-    new Player(cubes[GREEN], levels[0].posP2.x, levels[0].posP2.y)
+    new Player(cubes[BLUE], levels[0].posP1.x, levels[0].posP1.y, "p1"),
+    new Player(cubes[GREEN], levels[0].posP2.x, levels[0].posP2.y, "p2")
   );
   
   game.resize();
