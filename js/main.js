@@ -38,6 +38,7 @@ class Game {
     await this.audio.load("match", "msc/battles/1.ogg");
     await this.audio.load("blue-get", "snd/blue/get.ogg");
     await this.audio.load("green-get", "snd/green/get.ogg");
+    await this.audio.load("flag", "snd/sfx/flag.ogg");
     await this.audio.playMusic("match");
   }
 
@@ -101,7 +102,7 @@ class Match extends State {
   }
 
   onKeyDown = (e) => {
-    if (e.repeat) return;
+    //if (e.repeat) return;
     const code = e.keyCode;
     const input1 = this.players[P1].input;
     const input2 = this.players[P2].input;
@@ -117,7 +118,7 @@ class Match extends State {
       case 38: if (input2.at(-1) != "up") input2.push("up"); break;
       case 40: if (input2.at(-1) != "down") input2.push("down"); break;
     }
-    //console.log(input1);
+    //console.log("press:", input1);
     e.preventDefault()
   }
 
@@ -136,7 +137,7 @@ class Match extends State {
       case 38: if (input2.indexOf("up") != -1) input2.splice(input2.indexOf("up"), 1); break;
       case 40: if (input2.indexOf("down") != -1) input2.splice(input2.indexOf("down"), 1); break;
     }
-    //console.log(input1);
+    //console.log("release", input1);
     e.preventDefault();
   }
 
@@ -265,7 +266,7 @@ class AudioManager {
   async init() {
     this.ctx = new AudioContext();
     this.musicGain = this.ctx.createGain();
-    this.musicGain.gain.value = 0.3;
+    this.musicGain.gain.value = 0.1;
     this.musicGain.connect(this.ctx.destination);
     this.sfxGain = this.ctx.createGain();
     this.sfxGain.gain.value = 0.6;
@@ -324,14 +325,13 @@ class AudioManager {
     const source = this.ctx.createBufferSource();
     const selfgain = this.ctx.createGain();
     const panner = this.ctx.createStereoPanner();
-
+    panner.pan.value = ((x / GAME_WIDTH) * 2) - 1;
     source.buffer = this.buffers[sound];
     //selfgain.gain.value = this.sfxGain.gain.value;
-    panner.pan.value = ((x / GAME_WIDTH) * 2) - 1;
     source.connect(panner);
-    pan.connect(selfgain);
-    gain.connect(this.sfxGain);
-    src.start();
+    panner.connect(selfgain);
+    selfgain.connect(this.sfxGain);
+    source.start();
   }
 
   stopMusic() {
@@ -405,20 +405,44 @@ class Flag {
     this.done = false;
   }
   
-  draw(ctx){
-    ctx.globalAlpha = 1;
-    ctx.drawImage(this.spr, this.x, this.y);
+  draw(ctx) {
+    this.spr.draw(ctx, this.x, this.y);
   }
 
   update(players, audio) {
     for (const p of players) {
       if (p.x == this.x && p.y == this.y) {
+        audio.playSfx("flag", this.x);
         audio.playVoice(p.id, p.cube.sounds.get, p.x);
         p.cube.color = "white";
         p.spd = 2;
         this.done = true;
         break;
       }
+    }
+    this.spr.update();
+  }
+}
+
+class Sprite {
+  constructor(img, imgnum, imgidx, imgspd) {
+    this.img = img;
+    this.imgnum = imgnum;
+    this.imgidx = imgidx;
+    this.imgspd = imgspd;
+  }
+  
+  draw(ctx, x, y) {
+    ctx.globalAlpha = 1;
+    const sx = Math.floor(this.imgidx) * TILE_SIZE;
+    ctx.drawImage(this.img, sx, 0, TILE_SIZE, TILE_SIZE, x, y, TILE_SIZE, TILE_SIZE);
+  }
+
+  update() {
+    if (this.imgidx < this.imgnum) {
+      this.imgidx+=this.imgspd;
+    } else {
+      this.imgidx = 0;
     }
   }
 }
@@ -573,8 +597,8 @@ async function main() {
   );
   
   //document.removeEventListener("keydown", preventKeyboardScroll, false);
-
-  const flag = new Flag(images.objs[0], 320, 320);
+  const sprFlag = new Sprite(images.objs[0], 6, 0, 0.2);
+  const flag = new Flag(sprFlag, 320, 320);
   objects.push(flag);
 
   levels.push(
