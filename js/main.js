@@ -5,17 +5,23 @@ const TILES_X = GAME_WIDTH / TILE_SIZE;
 const TILES_Y = GAME_HEIGHT / TILE_SIZE;
 const FPS = 1000 / 60;
 const GRID = false;
+// colors
 const BLUE = 0;
 const PINK = 1;
 const GREEN = 2;
 const WHITE = 2;
 const BLACK = 0;
+// players
 const P1 = 0;
 const P2 = 1;
+// input
 const LEFT = 0;
 const RIGHT = 1;
 const UP = 2;
 const DOWN = 3;
+// sprites
+const FLAG = 0;
+const SPARK = 1;
 
 class Game {
   constructor(container, canvas, ctx) {
@@ -26,6 +32,7 @@ class Game {
     this.images = null;
     this.cubes = [];
     this.levels = [];
+    this.sprites = [];
     this.lastTime = 0;
     this.state = null;
     this.animId = null;
@@ -152,7 +159,7 @@ class Match extends State {
       const o = this.objects[i];
 
       if (o instanceof Flag) {
-        o.update(this.players, this.game.audio);
+        o.update(this.objects, this.players, this.game.sprites, this.game.audio);
       } else {
         o.update();
       }
@@ -266,10 +273,10 @@ class AudioManager {
   async init() {
     this.ctx = new AudioContext();
     this.musicGain = this.ctx.createGain();
-    this.musicGain.gain.value = 0.1;
+    this.musicGain.gain.value = 0.4;
     this.musicGain.connect(this.ctx.destination);
     this.sfxGain = this.ctx.createGain();
-    this.sfxGain.gain.value = 0.6;
+    this.sfxGain.gain.value = 0.8;
     this.sfxGain.connect(this.ctx.destination);
   }
 
@@ -397,8 +404,28 @@ class Path {
   }
 }
 
+class SparkFlag {
+  constructor(spr, x, y) {
+    this.spr = spr;
+    this.x = x;
+    this.y = y;
+    this.done = false;
+  }
+
+  draw(ctx) {
+    this.spr.draw(ctx, this.x, this.y);
+  }
+  
+  update() {
+    if (this.spr.imgidx == this.spr.imgnum) {
+      this.done = true;
+    }
+    this.spr.update();
+  }
+}
+
 class Flag {
-  constructor(spr, x, y){
+  constructor(spr, x, y) {
     this.spr = spr;
     this.x = x;
     this.y = y;
@@ -409,10 +436,11 @@ class Flag {
     this.spr.draw(ctx, this.x, this.y);
   }
 
-  update(players, audio) {
+  update(objects, players, sprites, audio) {
     for (const p of players) {
       if (p.x == this.x && p.y == this.y) {
         audio.playSfx("flag", this.x);
+        objects.push(new SparkFlag(sprites[SPARK],this.x,this.y));
         audio.playVoice(p.id, p.cube.sounds.get, p.x);
         p.cube.color = "white";
         p.spd = 2;
@@ -425,17 +453,21 @@ class Flag {
 }
 
 class Sprite {
-  constructor(img, imgnum, imgidx, imgspd) {
+  constructor(img, imgnum, imgidx, imgspd, w, h, cx, cy) {
     this.img = img;
     this.imgnum = imgnum;
     this.imgidx = imgidx;
     this.imgspd = imgspd;
+    this.w = w;
+    this.h = h;
+    this.cx = cx;
+    this.cy = cy;
   }
   
   draw(ctx, x, y) {
     ctx.globalAlpha = 1;
-    const sx = Math.floor(this.imgidx) * TILE_SIZE;
-    ctx.drawImage(this.img, sx, 0, TILE_SIZE, TILE_SIZE, x, y, TILE_SIZE, TILE_SIZE);
+    const sx = Math.floor(this.imgidx) * this.w;
+    ctx.drawImage(this.img, sx, 0, this.w, this.h, x-this.cx, y-this.cy, this.w, this.h);
   }
 
   update() {
@@ -549,19 +581,22 @@ async function main() {
   const levels = [];
   const objects = [];
   const players = [];
+  const sprites = [];
   
   const [
     imgCubeBlue,
     imgCubePink,
     imgCubeGreen,
     imgLvl1,
-    imgFlag
+    imgFlag,
+    imgSparkFlag
   ] = await Promise.all([
     loadImage("cubes/blue.png"),
     loadImage("cubes/pink.png"),
     loadImage("cubes/green.png"),
     loadImage("lvls/1.png"),
-    loadImage("objs/flag.png")
+    loadImage("objs/flag.png"),
+    loadImage("objs/sparkflag.png")
   ]);
 
   images.cubes.push(
@@ -575,7 +610,8 @@ async function main() {
   );
 
   images.objs.push(
-    imgFlag
+    imgFlag,
+    imgSparkFlag
   );
 
   cubes.push(
@@ -597,8 +633,9 @@ async function main() {
   );
   
   //document.removeEventListener("keydown", preventKeyboardScroll, false);
-  const sprFlag = new Sprite(images.objs[0], 6, 0, 0.2);
-  const flag = new Flag(sprFlag, 320, 320);
+  sprites.push(new Sprite(images.objs[FLAG], 6, 0, 0.2, 16, 16, 0, 0));
+  sprites.push(new Sprite(images.objs[SPARK], 7, 0, 0.3, 48, 48, 16, 16));
+  const flag = new Flag(sprites[FLAG], 320, 320);
   objects.push(flag);
 
   levels.push(
@@ -623,6 +660,7 @@ async function main() {
   game.images = images;
   game.cubes = cubes;
   game.levels = levels;
+  game.sprites = sprites;
 
   game.changeState(
     new Match(
