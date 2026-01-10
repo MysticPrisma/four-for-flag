@@ -417,7 +417,7 @@ class SparkFlag {
   }
   
   update() {
-    if (this.spr.imgidx == this.spr.imgnum) {
+    if (this.spr.imgidx >= this.spr.imgnum) {
       this.done = true;
     }
     this.spr.update();
