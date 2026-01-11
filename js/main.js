@@ -198,7 +198,9 @@ class Player {
   }
 
   draw(ctx) {
+    //ctx.filter = "hue-rotate(90deg)";
     ctx.drawImage(this.cube.img, this.x, this.y);
+    //ctx.filter = "none";
   }
 
   checkCollision(walls) {
@@ -409,18 +411,21 @@ class SparkFlag {
     this.spr = spr;
     this.x = x;
     this.y = y;
+    this.a = 1;
+    this.r = 8;
     this.done = false;
   }
 
   draw(ctx) {
-    this.spr.draw(ctx, this.x, this.y);
+    ctx.beginPath();
+    ctx.arc(this.x+8, this.y+8, this.r, 0, 2*Math.PI, false);
+    ctx.strokeStyle = "white";
+    ctx.stroke();
   }
   
   update() {
-    if (this.spr.imgidx >= this.spr.imgnum) {
-      this.done = true;
-    }
-    this.spr.update();
+    if (this.a > 0.03) { this.a -= 0.03; } else this.done = true;
+    this.r += this.r*0.05;
   }
 }
 
@@ -430,10 +435,16 @@ class Flag {
     this.x = x;
     this.y = y;
     this.done = false;
+    this.color = 0;
   }
   
   draw(ctx) {
+    ctx.filter = "blur(3px) hue-rotate("+this.color+"deg)";
     this.spr.draw(ctx, this.x, this.y);
+    ctx.filter = "none";
+    ctx.filter = "hue-rotate("+this.color+"deg)";
+    this.spr.draw(ctx, this.x, this.y);
+    ctx.filter = "none";
   }
 
   update(objects, players, sprites, audio) {
@@ -449,6 +460,7 @@ class Flag {
       }
     }
     this.spr.update();
+    if(this.color<360){this.color+=2;}else{this.color=0};
   }
 }
 
@@ -633,8 +645,8 @@ async function main() {
   );
   
   //document.removeEventListener("keydown", preventKeyboardScroll, false);
-  sprites.push(new Sprite(images.objs[FLAG], 6, 0, 0.2, 16, 16, 0, 0));
-  sprites.push(new Sprite(images.objs[SPARK], 7, 0, 0.3, 48, 48, 16, 16));
+  sprites.push(new Sprite(images.objs[FLAG], 1, 0, 0, 16, 16, 0, 0));
+  sprites.push(new Sprite(images.objs[SPARK], 5, 0, 0.4, 80, 80, 32, 32));
   const flag = new Flag(sprites[FLAG], 320, 320);
   objects.push(flag);
 
