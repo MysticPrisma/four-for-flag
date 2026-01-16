@@ -44,7 +44,11 @@ class Game {
     await this.audio.init();
     await this.audio.load("match", "msc/battles/1.ogg");
     await this.audio.load("blue-get", "snd/blue/get.ogg");
+    await this.audio.load("blue-take", "snd/blue/take.ogg");
+    await this.audio.load("blue-ouch", "snd/blue/ouch.ogg");
     await this.audio.load("green-get", "snd/green/get.ogg");
+    await this.audio.load("green-take", "snd/green/take.ogg");
+    await this.audio.load("green-ouch", "snd/green/ouch.ogg");
     await this.audio.load("flag", "snd/sfx/flag.ogg");
     await this.audio.playMusic("match");
   }
@@ -150,9 +154,9 @@ class Match extends State {
 
   update(dt) {
     for (const p of this.players) {
-      const path = new Path(p.x, p.y, TILE_SIZE, TILE_SIZE, p.cube.color);
+      const path = new Path(p.x, p.y, TILE_SIZE, TILE_SIZE, p.color);
       this.objects.push(path);
-      p.update(this.level.walls, this.objects);
+      p.update(this.level.walls, this.objects, this.players, this.game.audio, dt);
     }
 
     for (let i = this.objects.length-1; i >= 0; i--) {
@@ -195,24 +199,47 @@ class Player {
     this.collisions = [false, false, false, false];
     this.left = 0;
     this.spd = 4;
+    this.flag = false;
+    this.sleep = 0;
+    this.color = this.cube.color;
   }
 
   draw(ctx) {
-    //ctx.filter = "hue-rotate(90deg)";
     ctx.drawImage(this.cube.img, this.x, this.y);
-    //ctx.filter = "none";
   }
 
-  checkCollision(walls) {
-    const tx = this.x / TILE_SIZE;
-    const ty = this.y / TILE_SIZE;
+  checkWallCollision(walls) {
+    const tx = Math.floor(this.x / TILE_SIZE);
+    const ty = Math.floor(this.y / TILE_SIZE);
     this.collisions[LEFT] = (walls[tx-1][ty] != "" || !this.x);
     this.collisions[RIGHT] = (walls[tx+1][ty] != "" || this.x == 624);
     this.collisions[UP] = (walls[tx][ty-1] != "");
     this.collisions[DOWN] = (walls[tx][ty+1] != "");
   }
 
-  update(walls, objects) {
+  checkPlayerCollision(players, objects, audio) {
+    for (const p of players) {
+      if (p.id == this.id) continue;
+      if ((p.x >= this.x && p.x <= this.x+16) && (p.y >= this.y && p.y <= this.y+16)) {
+        if (!p.flag && this.flag && p.sleep <= 0) {
+          audio.playSfx("flag", this.x);
+          objects.push(new SparkFlag("",this.x,this.y));
+          audio.playVoice(p.id, p.cube.sounds.take, 0);
+          audio.playVoice(this.id, this.cube.sounds.ouch, 640);
+          this.sleep = 5;
+          this.flag = false;
+          this.color = this.cube.color;
+          this.spd = 4;
+          p.spd = 2;
+          p.color = "white";
+          p.flag = true;
+        }
+      }
+    }
+  }
+
+  update(walls, objects, players, audio, dt) {
+    this.checkPlayerCollision(players, objects, audio);
     if (!this.left) {
       this.state = this.input.at(-1);
       if (this.state == this.prev && this.input.length > 2) {
@@ -220,8 +247,13 @@ class Player {
       }
       if (this.input != "idle") {
         this.left = 16;
-        this.checkCollision(walls);
+        this.checkWallCollision(walls);
       }
+    }
+    
+    if (this.sleep > 0) {
+      this.sleep -= dt;
+      return;
     }
 
     if (this.left) {
@@ -450,17 +482,18 @@ class Flag {
   update(objects, players, sprites, audio) {
     for (const p of players) {
       if (p.x == this.x && p.y == this.y) {
+        p.flag = true;
         audio.playSfx("flag", this.x);
         objects.push(new SparkFlag(sprites[SPARK],this.x,this.y));
         audio.playVoice(p.id, p.cube.sounds.get, p.x);
-        p.cube.color = "white";
+        p.color = "white";
         p.spd = 2;
         this.done = true;
         break;
       }
     }
     this.spr.update();
-    if(this.color<360){this.color+=2;}else{this.color=0};
+    if (this.color < 360) { this.color += 2; } else { this.color = 0 };
   }
 }
 
@@ -630,17 +663,17 @@ async function main() {
     new Cube(
       images.cubes[BLUE], 
       colors.cubes[BLUE],
-      {get: "blue-get"}
+      {get: "blue-get", take: "blue-take", ouch: "blue-ouch"}
     ),
     new Cube(
       images.cubes[PINK], 
       colors.cubes[PINK],
-      {get: "green-get"}
+      {get: "pink-get", take: "pink-take", ouch: "pink-ouch"}
     ),
     new Cube(
       images.cubes[GREEN], 
       colors.cubes[GREEN],
-      {get: "green-get"}
+      {get: "green-get", take: "green-take", ouch: "green-ouch"}
     )
   );
   
